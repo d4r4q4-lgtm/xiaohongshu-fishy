@@ -86,13 +86,6 @@ www.xiaohongshu.com    xiaohongshu.com
 www.rednote.com        rednote.com
 ```
 
-支持以下域名（国际版同样能用）：
-
-```
-www.xiaohongshu.com    xiaohongshu.com
-www.rednote.com        rednote.com
-```
-
 ---
 
 ## ⌨️ 快捷操作
