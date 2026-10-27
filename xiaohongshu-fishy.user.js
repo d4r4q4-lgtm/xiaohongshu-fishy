@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小红书 · 表格模式（摸鱼）
 // @namespace    https://github.com/d4r4q4-lgtm/xiaohongshu-fishy
-// @version      0.11
+// @version      0.12
 // @author       haozi
 // @description  把小红书伪装成 Excel 在线表格：一帖一行，图片变成「图01」文字链接，点开才看原图
 // @license      MIT
@@ -33,12 +33,12 @@
   }
   if (!DEMO && !HOST_OK) return;
 
-  console.info('%c[fishy] v0.11 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
+  console.info('%c[fishy] v0.12 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
 
   // 版本回执：只发到本机 127.0.0.1，用来确认实际在跑哪一版（排查"改了没生效"）
   (function fzPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=0.11&p=' + encodeURIComponent(location.pathname);
+      var u = 'http://127.0.0.1:8125/hit?v=0.12&p=' + encodeURIComponent(location.pathname);
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
       fetch(u, { mode: 'no-cors', cache: 'no-store' }).catch(function () {});
     } catch (e) {}
