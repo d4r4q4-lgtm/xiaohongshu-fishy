@@ -1,9 +1,12 @@
 // ==UserScript==
 // @name         小红书 · 表格模式（摸鱼）
-// @namespace    local.fishy.xhs
+// @namespace    https://github.com/d4r4q4-lgtm/xiaohongshu-fishy
 // @version      0.1
 // @author       haozi
-// @description  把小红书首页与笔记详情页伪装成在线表格（Excel 样式）：一帖一行、多行单元格、图片只留可点击的文字链接
+// @description  把小红书伪装成 Excel 在线表格：一帖一行，图片变成「图01」文字链接，点开才看原图
+// @license      MIT
+// @homepageURL  https://github.com/d4r4q4-lgtm/xiaohongshu-fishy
+// @supportURL   https://github.com/d4r4q4-lgtm/xiaohongshu-fishy/issues
 // @match        https://www.xiaohongshu.com/*
 // @run-at       document-start
 // @grant        GM_getValue
