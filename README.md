@@ -2,7 +2,7 @@
 
 > 把小红书web伪成 Excel 在线表格，方便摸鱼
 >
-> `v0.1` ｜ 作者 **haozi** ｜ [开发文档](DEV.md)
+> `v0.12` ｜ 作者 **haozi** ｜ [开发文档](DEV.md)
 
 ![首页](docs/images/list.png)
 
