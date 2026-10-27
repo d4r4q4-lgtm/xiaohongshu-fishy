@@ -48,15 +48,29 @@
 
 ## 3. 文件清单
 
-| 文件                               | 作用                                                   |
-| -------------------------------- | ---------------------------------------------------- |
-| `xiaohongshu-fishy.user.js`      | 全部功能，单文件                                             |
-| `serve.mjs`                      | 本地只读更新源（`127.0.0.1:8125`），提供脚本、`/version`、`/hit`（安装页已删） |
-| `check.mjs`                      | 一键跑本地两套 + 真机两套                                       |
-| `sweep.mjs`                      | 真机巡检：列表 + 批量笔记 + 搜索页                                 |
-| `real-check.mjs`                 | 真实站点单篇断言                                             |
-| `cdp.mjs` / `cdp-lib.mjs`        | 用 CDP 驱动 headless Edge（注入脚本、求值、截图、真实鼠标）              |
-| `test.html` / `test-scroll.html` | 本地单元用例（用假数据模拟真实结构）                                   |
+**随仓库发布的（使用者需要的）：**
+
+| 文件 | 作用 |
+|---|---|
+| `xiaohongshu-fishy.user.js` | 全部功能，单文件 |
+| `README.md` | 使用说明 |
+| `DEV.md` | 本文件 |
+| `docs/images/` | 截图 |
+
+**作者本地的开发工具（未随仓库发布）：**
+
+| 文件 | 作用 |
+|---|---|
+| `serve.mjs` | 本地只读更新源（`127.0.0.1:8125`），提供脚本、`/version`、`/hit` |
+| `check.mjs` | 一键跑本地两套 + 真机两套 |
+| `sweep.mjs` | 真机巡检：列表 + 批量笔记 + 搜索页 |
+| `real-check.mjs` | 真实站点单篇断言 |
+| `cdp.mjs` / `cdp-lib.mjs` | 用 CDP 驱动 headless Edge（注入脚本、求值、截图、真实鼠标） |
+| `test.html` / `test-scroll.html` | 本地单元用例（用假数据模拟真实结构） |
+| `fishy-update-server.vbs` | Windows 开机自启更新源 |
+| `push.cmd` | 本机一键推送到 GitHub |
+
+> 这些工具不进仓库：对使用者没意义，也让仓库干净。需要时由作者本地保留。
 
 ---
 

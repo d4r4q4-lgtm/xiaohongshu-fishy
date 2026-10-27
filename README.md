@@ -175,31 +175,28 @@ window.__fzProbe.readStateNote(id)  // 从站点数据里解析出的笔记
 // @downloadURL  https://你的地址/xiaohongshu-fishy.user.js
 ```
 
-**B. 本地更新源**（仓库里带了）  
-`serve.mjs` 是个只读小服务，跑起来后把上面两行指向 `http://127.0.0.1:8125/xiaohongshu-fishy.user.js` 即可。  
-Windows 可用 `fishy-update-server.vbs` 做开机自启。
+**B. 本地起个静态服务**  
+在脚本所在目录跑任意一个静态服务器（Python 一行就够）：
+
+```bash
+python -m http.server 8125
+```
+
+然后把上面两行指向 `http://127.0.0.1:8125/xiaohongshu-fishy.user.js`。
 
 ---
 
 ## 📁 目录
 
 ```
-xiaohongshu-fishy.user.js   主脚本（只需要装这一个文件）
+xiaohongshu-fishy.user.js   主脚本（装这一个文件就够了）
 README.md                   本文件
 DEV.md                      开发文档：架构、实现、18 条踩坑清单
-LICENSE                     MIT
 docs/images/                截图
-
-—— 以下是开发/自测用，普通用户不用管 ——
-serve.mjs                   本地只读更新源（可选）
-fishy-update-server.vbs     Windows 开机自启更新源
-check.mjs                   一键自测：本地 + 真机
-sweep.mjs                   真机巡检（批量笔记）
-real-check.mjs              真实站点断言
-cdp.mjs / cdp-lib.mjs       CDP 驱动工具
-test.html                   本地单元用例（52 条）
-test-scroll.html            滚动/稳定性用例（18 条）
 ```
+
+> 开发和自测工具（`check.mjs` / `sweep.mjs` / `cdp.mjs` / `serve.mjs` 等）只在作者本地使用，
+> 没有随仓库发布 —— 对使用者没有意义，也少点干扰。
 
 ---
 
@@ -228,4 +225,4 @@ node check.mjs --real --sweep=6     # 约 2 分钟，92 条断言
 
 ## 📄 License
 
-[MIT](LICENSE)
+MIT。脚本头部已声明 `@license MIT`，可自由使用、修改、再分发。

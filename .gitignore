@@ -1,4 +1,4 @@
-# 运行时产物（本地调试/自测用，不进仓库）
+# ===== 运行时 / 调试产物 =====
 .cdp/
 .edge*/
 .edgetmp/
@@ -6,13 +6,24 @@ shots/
 *.log
 *.mp4
 hits.log
+plan*.json
 
-# 编辑器
+# ===== 开发工具（仅作者本地使用，不随仓库发布）=====
+cdp-lib.mjs
+cdp.mjs
+check.mjs
+real-check.mjs
+sweep.mjs
+test.html
+test-scroll.html
+serve.mjs
+launch-serve.mjs
+fishy-update-server.vbs
+push.cmd
+
+# ===== 编辑器 / 系统 =====
 .vscode/
 .idea/
 *.swp
 .DS_Store
 Thumbs.db
-
-# 本机推送脚本（含本地绝对路径，不入库）
-push.cmd
