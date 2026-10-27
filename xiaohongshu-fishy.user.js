@@ -23,6 +23,14 @@
 
   var DEMO = !!window.__FISHY_DEMO__;
   var HOST_OK = /(^|\.)(xiaohongshu|rednote)\.com$/.test(location.hostname);
+  // 国内版笔记路径 /explore/{id}；国际版(rednote) /discovery/item/{id}
+  var NOTE_PATH = /(?:\/explore|\/discovery\/item)\/([0-9a-zA-Z]+)/;
+  var NOTE_A_SEL = 'a[href*="/explore/"],a[href*="/discovery/item/"]';
+  function noteHref(id, token) {
+    var base = /rednote\.com$/.test(location.hostname) ? '/discovery/item/' : '/explore/';
+    return base + (id || '') +
+      (token ? '?xsec_token=' + encodeURIComponent(token) + '&xsec_source=pc_feed' : '');
+  }
   if (!DEMO && !HOST_OK) return;
 
   console.info('%c[fishy] v0.11 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
@@ -234,7 +242,7 @@
     if (img.dataset.fz) return false;
     if (img.closest('.fz-row,.fz-chrome,.fz-viewer,.fz-notesheet')) return false;
     if (img.closest('[class*="comment-item"]')) return false;
-    if (location.pathname.indexOf('/explore/') === 0) return false;   // 笔记页整页由表格接管
+    if (NOTE_PATH.test(location.pathname)) return false;   // 笔记页整页由表格接管
     if (img.closest('a[href*="/user/"]')) return false;
     if (img.closest('[data-fz-skip]')) return false;
 
@@ -425,7 +433,7 @@
   }
 
   function readCard(card) {
-    var link = card.querySelector('a[href*="/explore/"]');
+    var link = card.querySelector(NOTE_A_SEL);
     var href = link ? (link.getAttribute('href') || '') : '';
     var authorLink = card.querySelector('a[href*="/user/"]');
     var uid = '';
@@ -434,7 +442,7 @@
       if (um) uid = um[1];
     }
     var imgs = imgList(card, 9);
-    var title = pick(card, ['[class*="title"]', 'a[title]', 'a[href*="/explore/"] span'], 50) || txt(link, 50);
+    var title = pick(card, ['[class*="title"]', 'a[title]', NOTE_A_SEL + ' span'], 50) || txt(link, 50);
 
     return {
       href: href,
@@ -673,7 +681,7 @@
 
   // 统一入口：state 为主（有楼中楼），DOM 只用来补 state 里还没出现的
   function readComments(pid) {
-    var id = pid || (location.pathname.match(/\/explore\/([0-9a-zA-Z]+)/) || [])[1] || '';
+    var id = pid || (location.pathname.match(NOTE_PATH) || [])[1] || '';
     var st = null;
     try { st = stateComments(id); } catch (e) { st = null; }
     if (st && st.length) {
@@ -876,14 +884,14 @@
 
   // ---------- 首页：卡片 → 表格行 ----------
   function findCardGroups() {
-    var anchors = document.querySelectorAll('a[href*="/explore/"]');
+    var anchors = document.querySelectorAll(NOTE_A_SEL);
     var groups = new Map();
     for (var i = 0; i < anchors.length; i++) {
       var el = anchors[i];
       for (var k = 0; k < 6 && el.parentElement; k++) {
         var p = el.parentElement, sibs = 0;
         for (var j = 0; j < p.children.length; j++) {
-          if (p.children[j].querySelector && p.children[j].querySelector('a[href*="/explore/"]')) sibs++;
+          if (p.children[j].querySelector && p.children[j].querySelector(NOTE_A_SEL)) sibs++;
         }
         if (sibs >= 3) {
           if (!groups.has(p)) groups.set(p, []);
@@ -1223,7 +1231,7 @@
   }
 
   function openNote(card, data, e) {
-    var m = (data.href || '').match(/\/explore\/([0-9a-zA-Z]+)/);
+    var m = (data.href || '').match(NOTE_PATH);
     var id = m ? m[1] : '';
     var tk = tokenFor(card, id);
     e.preventDefault();
@@ -1238,7 +1246,7 @@
         uid: data.uid, urls: data.urls, dims: data.dims, type: data.type
       }));
     } catch (e) {}
-    location.href = '/explore/' + id + '?xsec_token=' + encodeURIComponent(tk) + '&xsec_source=pc_feed';
+    location.href = noteHref(id, tk);
     return true;
   }
 
@@ -1268,7 +1276,7 @@
   var lastAnchorCount = -1;
   function reflowFeed() {
     if (!CFG.tableMode) return;
-    var an = document.querySelectorAll('a[href*="/explore/"]').length;
+    var an = document.querySelectorAll(NOTE_A_SEL).length;
     if (an === lastAnchorCount && document.querySelectorAll('.fz-row').length > 0) return;
     lastAnchorCount = an;
     var g = findCardGroups();
@@ -1352,7 +1360,7 @@
   // 否则顶部搜索区/导航区因为包着 .fz-src，会被误判成卡片容器而不隐藏，把表格顶下去。
   function hasRealCards(el) {
     if (!el || !el.querySelectorAll) return false;
-    var as = el.querySelectorAll('a[href*="/explore/"]');
+    var as = el.querySelectorAll(NOTE_A_SEL);
     for (var i = 0; i < as.length; i++) {
       if (!(as[i].closest && as[i].closest('.fz-src'))) return true;
     }
@@ -1375,7 +1383,7 @@
   }
 
   function noteIdOf(el) {
-    var m = ((el && el.getAttribute && el.getAttribute('href')) || '').match(/\/explore\/([0-9a-zA-Z]+)/);
+    var m = ((el && el.getAttribute && el.getAttribute('href')) || '').match(NOTE_PATH);
     return m ? m[1] : '';
   }
 
@@ -1386,7 +1394,7 @@
     for (var i = 0; i < 6 && el.parentElement; i++) {
       el = el.parentElement;
       if (el === document.body) break;
-      var anchors = el.querySelectorAll('a[href*="/explore/"]');
+      var anchors = el.querySelectorAll(NOTE_A_SEL);
       var same = true;
       for (var k = 0; k < anchors.length; k++) {
         if (noteIdOf(anchors[k]) !== id) { same = false; break; }
@@ -1421,7 +1429,7 @@
         uid: d.uid, urls: d.urls, dims: d.dims, type: d.type
       }));
     } catch (e) {}
-    location.href = '/explore/' + d.id + '?xsec_token=' + encodeURIComponent(d.token) + '&xsec_source=pc_feed';
+    location.href = noteHref(d.id, d.token);
   }
 
   // 看板行被站点/我们自己弄丢单元格时重建
@@ -1439,12 +1447,12 @@
 
   function collectCards() {
     ensureBoard();
-    var anchors = document.querySelectorAll('a[href*="/explore/"]');
+    var anchors = document.querySelectorAll(NOTE_A_SEL);
     var added = 0;
     for (var i = 0; i < anchors.length && added < 80; i++) {
       var a = anchors[i];
       var href = a.getAttribute('href') || '';
-      var m = href.match(/\/explore\/([0-9a-zA-Z]+)/);
+      var m = href.match(NOTE_PATH);
       if (!m) continue;
       var id = m[1];
       if (noteMap.has(id)) continue;
@@ -1797,7 +1805,7 @@
         // 站点的回复还没取全 → 去点它自己的"展开 N 条回复"，拉回来再重画
         if (tg.dataset.more === '1') {
           var idx = parseInt(tg.dataset.idx, 10) || 0;
-          var pid2 = (location.pathname.match(/\/explore\/([0-9a-zA-Z]+)/) || [])[1] || '';
+          var pid2 = (location.pathname.match(NOTE_PATH) || [])[1] || '';
           tg.textContent = '加载回复中…';
           var anyHit = false;
           try { anyHit = expandAllOnSite() > 0; } catch (e) {}
@@ -1838,8 +1846,7 @@
       if (op) {
         e.preventDefault(); e.stopPropagation();
         var d0 = noteSheetData || {};
-        var u = '/explore/' + (d0.id || '');
-        if (d0.token) u += '?xsec_token=' + encodeURIComponent(d0.token);
+        var u = noteHref(d0.id, d0.token);
         window.open(u, '_blank');
         return;
       }
@@ -1855,7 +1862,7 @@
     });
 
     noteSheet = el;
-    try { retryMainImages(el, data, (location.pathname.match(/\/explore\/([0-9a-zA-Z]+)/) || [])[1] || ''); } catch (e6) {}
+    try { retryMainImages(el, data, (location.pathname.match(NOTE_PATH) || [])[1] || ''); } catch (e6) {}
     updateNsStat(el, data);
     fillSheet(el);
     setTimeout(function () { if (noteSheet === el) fillSheet(el); }, 80);
@@ -1872,7 +1879,7 @@
       setTimeout(function () {
         if (noteSheet !== el) return;
 
-        try { refreshMainMeta(el, data, (location.pathname.match(/\/explore\/([0-9a-zA-Z]+)/) || [])[1] || ''); } catch (e9) {}
+        try { refreshMainMeta(el, data, (location.pathname.match(NOTE_PATH) || [])[1] || ''); } catch (e9) {}
 
         // 弹层晚加载时，标题/正文/时间可能一开始是空的，补一次
         if (!data.desc || !data.time || !data.title) {
@@ -2168,7 +2175,7 @@
   function closeNoteSheet() {
     removeSheet();
     try {
-      var m = location.pathname.match(/\/explore\/([0-9a-zA-Z]+)/);
+      var m = location.pathname.match(NOTE_PATH);
       if (m) closedPid = m[1];
     } catch (e) {}
   }
@@ -2192,7 +2199,7 @@
     if (noteSheet) { nsWhy('busy'); return; }
     if (Date.now() - pageAt < 700) { nsWhy('warmup'); return; }
 
-    var pid = (location.pathname.match(/\/explore\/([0-9a-zA-Z]+)/) || [])[1] || '';
+    var pid = (location.pathname.match(NOTE_PATH) || [])[1] || '';
     if (!pid) { nsWhy('list'); return; }   // 首页/列表页不做笔记详情接管
     if (closedPid === pid) { nsWhy('closed'); return; }   // 用户手动收起过，别立刻又弹出来
     var cached = null;
@@ -2408,6 +2415,22 @@
   var aboveDone = false;
   // 铁腕版：.fz-board 是 body 的直接子元素，排它前面的站点内容一律隐藏。
   // 不依赖类名/结构判断，登录态、游客态、不同窗口宽度都能清干净。
+  // 游客态弹层：登录框遮罩、右下角客服/反馈悬浮球（国际版 rednote 会强制弹）
+  function hideOverlays() {
+    if (yieldMode) return;   // 登录/登出让位时要留给用户看
+    var sel = '.reds-mask,.login-container,[class*="login-modal"],[class*="loginModal"],' +
+      '[class*="floating-btn"],[class*="customer-service"],[class*="side-bar-contact"]';
+    var els = document.querySelectorAll(sel);
+    for (var i = 0; i < els.length && i < 40; i++) {
+      var el = els[i];
+      if (el.closest && el.closest('.fz-chrome,.fz-notesheet,.fz-board,.fz-viewer')) continue;
+      if (el.dataset.fzHide === '1') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width < 20 || r.height < 20) continue;
+      hideEl(el);
+    }
+  }
+
   function hideBeforeBoard() {
     var bd = document.querySelector('.fz-board');
     if (!bd || bd.parentNode !== document.body) return;
@@ -2829,6 +2852,7 @@
       fillBoard();
     }
     hideBeforeBoard();
+    hideOverlays();
     hideAboveTable();
     ensureMoreRow();
     maybeNoteSheet();
@@ -3135,7 +3159,7 @@
       }
       // 刷新这一行的显示（赞数/时间）
       try {
-        var pid = (location.pathname.match(/\/explore\/([0-9a-zA-Z]+)/) || [])[1] || '';
+        var pid = (location.pathname.match(NOTE_PATH) || [])[1] || '';
         if (row <= 1 && sheetEl) refreshMainMeta(sheetEl, noteSheetData || {}, pid);
         else if (sheetEl && sheetEl.__fzRenderCmt) {
           var fresh = readComments(pid);
