@@ -31,7 +31,11 @@ function scriptVersion() {
 
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent((req.url || '/').split('?')[0]);
-  if (u === '/') u = '/install.html';
+  if (u === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end('本地更新源运行中。\n脚本地址: /xiaohongshu-fishy.user.js\n版本: /version');
+    return;
+  }
 
   // 版本回执：油猴脚本每次加载都会 ping 一次，用来确认"实际在跑哪一版"
   if (u === '/hit') {
