@@ -2,7 +2,7 @@
 // @name         小红书 · 表格模式（摸鱼）
 // @namespace    local.fishy.xhs
 // @version      0.1
-// @author       BOB
+// @author       haozi
 // @description  把小红书首页与笔记详情页伪装成在线表格（Excel 样式）：一帖一行、多行单元格、图片只留可点击的文字链接
 // @match        https://www.xiaohongshu.com/*
 // @run-at       document-start
