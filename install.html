@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>小红书 · 表格模式（摸鱼）安装</title>
+<style>
+  body{margin:0;padding:36px 24px;font:14px/1.7 -apple-system,"Segoe UI","PingFang SC",sans-serif;color:#1d1d1f;background:#f6f7f9;}
+  .card{max-width:640px;margin:0 auto;background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:26px 28px;box-shadow:0 2px 10px rgba(0,0,0,.04);}
+  h1{font-size:19px;margin:0 0 4px;}
+  .ver{color:#217346;font-weight:600;}
+  .sub{color:#8a9099;font-size:12.5px;margin-bottom:20px;}
+  .btn{display:inline-block;padding:11px 26px;background:#217346;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;}
+  .btn:hover{background:#1a5c38;}
+  .btn.sec{background:#fff;color:#217346;border:1px solid #b9d3c5;}
+  .btn.sec:hover{background:#f1f8f4;}
+  ol{padding-left:20px;margin:18px 0 0;color:#41474e;}
+  li{margin:6px 0;}
+  code{background:#f0f2f4;padding:1px 5px;border-radius:4px;font-size:12.5px;}
+  .tip{margin-top:20px;padding:12px 14px;background:#f7f9fb;border-left:3px solid #217346;font-size:12.5px;color:#5a6169;border-radius:0 6px 6px 0;}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>小红书 · 表格模式（摸鱼）</h1>
+  <div class="sub">把小红书伪装成在线表格 · 当前版本 <span class="ver" id="ver">读取中…</span></div>
+
+  <div class="row">
+    <a class="btn" id="install" href="./xiaohongshu-fishy.user.js">安装 / 更新到 Tampermonkey</a>
+    <a class="btn sec" href="./xiaohongshu-fishy.user.js" download>下载 .user.js</a>
+  </div>
+
+  <ol>
+    <li>点上面的绿色按钮，Tampermonkey 会弹出安装页，点「安装」。</li>
+    <li>装好后打开 <code>xiaohongshu.com</code>，按 <code>Ctrl+Shift+R</code> 强刷一次。</li>
+    <li>之后我改完脚本只升版本号，Tampermonkey 会自己拉新版，你不用再动手。</li>
+  </ol>
+
+  <div class="tip">
+    <b>自动更新说明</b>：本页由本机的小服务提供（127.0.0.1:8125），脚本头部的
+    <code>@updateURL</code> 指向这里。Tampermonkey 默认每 12 小时检查一次版本，
+    想更快可以在 Tampermonkey 设置里把「检查更新」调到每小时。<br>
+    服务没开时脚本照常工作，只是不会自动更新。
+  </div>
+</div>
+<script>
+  fetch('./version').then(r => r.json()).then(d => {
+    document.getElementById('ver').textContent = d.version || '未知';
+  }).catch(() => { document.getElementById('ver').textContent = '服务异常'; });
+</script>
+</body>
+</html>
