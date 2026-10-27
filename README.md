@@ -2,7 +2,7 @@
 
 > 把小红书web伪成 Excel 在线表格，方便摸鱼
 >
-> `v0.12` ｜ 作者 **haozi** ｜ [开发文档](DEV.md)
+> `v0.13` ｜ 作者 **haozi** ｜ [开发文档](DEV.md)
 
 ![首页](docs/images/list.png)
 
@@ -79,12 +79,7 @@ https://raw.githubusercontent.com/d4r4q4-lgtm/xiaohongshu-fishy/main/xiaohongshu
 
 `Ctrl + Shift + R` 强刷一次，看到绿色小方块 + 标题「工作簿1」就成功了。
 
-支持两个站点的**所有子域**（国际版 rednote 同样能用）：
-
-```
-*xiaohongshu.com     国内版（www / m / so 等子域都覆盖）
-*rednote.com         国际版（2026 年起海外账号会被强制跳转到这个域名）
-```
+支持 `xiaohongshu.com` 的**所有子域**（`www` / `m` / `so` 等都能用）。
 
 ---
 

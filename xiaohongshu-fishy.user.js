@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小红书 · 表格模式（摸鱼）
 // @namespace    https://github.com/d4r4q4-lgtm/xiaohongshu-fishy
-// @version      0.12
+// @version      0.13
 // @author       haozi
 // @description  把小红书伪装成 Excel 在线表格：一帖一行，图片变成「图01」文字链接，点开才看原图
 // @license      MIT
@@ -9,8 +9,6 @@
 // @supportURL   https://github.com/d4r4q4-lgtm/xiaohongshu-fishy/issues
 // @match        *://xiaohongshu.com/*
 // @match        *://*.xiaohongshu.com/*
-// @match        *://rednote.com/*
-// @match        *://*.rednote.com/*
 // @run-at       document-start
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -22,23 +20,22 @@
   'use strict';
 
   var DEMO = !!window.__FISHY_DEMO__;
-  var HOST_OK = /(^|\.)(xiaohongshu|rednote)\.com$/.test(location.hostname);
-  // 国内版笔记路径 /explore/{id}；国际版(rednote) /discovery/item/{id}
-  var NOTE_PATH = /(?:\/explore|\/discovery\/item)\/([0-9a-zA-Z]+)/;
-  var NOTE_A_SEL = 'a[href*="/explore/"],a[href*="/discovery/item/"]';
+  var HOST_OK = /(^|\.)xiaohongshu\.com$/.test(location.hostname);
+  // 笔记路径 /explore/{id}（若将来要支持别的站点，只改这三行）
+  var NOTE_PATH = /\/explore\/([0-9a-zA-Z]+)/;
+  var NOTE_A_SEL = 'a[href*="/explore/"]';
   function noteHref(id, token) {
-    var base = /rednote\.com$/.test(location.hostname) ? '/discovery/item/' : '/explore/';
-    return base + (id || '') +
+    return '/explore/' + (id || '') +
       (token ? '?xsec_token=' + encodeURIComponent(token) + '&xsec_source=pc_feed' : '');
   }
   if (!DEMO && !HOST_OK) return;
 
-  console.info('%c[fishy] v0.12 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
+  console.info('%c[fishy] v0.13 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
 
   // 版本回执：只发到本机 127.0.0.1，用来确认实际在跑哪一版（排查"改了没生效"）
   (function fzPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=0.12&p=' + encodeURIComponent(location.pathname);
+      var u = 'http://127.0.0.1:8125/hit?v=0.13&p=' + encodeURIComponent(location.pathname);
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
       fetch(u, { mode: 'no-cors', cache: 'no-store' }).catch(function () {});
     } catch (e) {}
@@ -256,7 +253,7 @@
     if (DEMO) return true;
     if (/sns-avatar|avatar/i.test(src)) return false;
     if (/emoji|smiley/i.test(img.className || '')) return false;
-    return /xhscdn\.com|sns-webpic|sns-img|ci\.xiaohongshu|rednote/i.test(src);
+    return /xhscdn\.com|sns-webpic|sns-img|ci\.xiaohongshu/i.test(src);
   }
 
   function findPanel(img) {
@@ -353,7 +350,7 @@
       if (r.width < 260 || r.height < 200) continue;
       var b = getComputedStyle(el).backgroundImage;
       var m = b && b.match(/url\(["']?(.*?)["']?\)/);
-      if (!m || !/xhscdn|sns-webpic|sns-img|ci\.xiaohongshu|rednote/.test(m[1])) continue;
+      if (!m || !/xhscdn|sns-webpic|sns-img|ci\.xiaohongshu/.test(m[1])) continue;
       el.dataset.fzBg = '1';
       var url = m[1].split('?')[0].split('!')[0];
       var link = document.createElement('a');
@@ -2415,7 +2412,7 @@
   var aboveDone = false;
   // 铁腕版：.fz-board 是 body 的直接子元素，排它前面的站点内容一律隐藏。
   // 不依赖类名/结构判断，登录态、游客态、不同窗口宽度都能清干净。
-  // 游客态弹层：登录框遮罩、右下角客服/反馈悬浮球（国际版 rednote 会强制弹）
+  // 游客态弹层：登录框遮罩、右下角客服/反馈悬浮球
   function hideOverlays() {
     if (yieldMode) return;   // 登录/登出让位时要留给用户看
     var sel = '.reds-mask,.login-container,[class*="login-modal"],[class*="loginModal"],' +
