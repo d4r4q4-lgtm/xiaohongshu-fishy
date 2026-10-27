@@ -52,7 +52,6 @@
 |---|---|
 | `xiaohongshu-fishy.user.js` | 全部功能，单文件 |
 | `serve.mjs` | 本地只读更新源（`127.0.0.1:8125`），提供脚本、安装页、`/version`、`/hit` |
-| `install.html` | 安装/更新页 |
 | `check.mjs` | 一键跑本地两套 + 真机两套 |
 | `sweep.mjs` | 真机巡检：列表 + 批量笔记 + 搜索页 |
 | `real-check.mjs` | 真实站点单篇断言 |
@@ -438,10 +437,23 @@ msedge --headless=new --remote-debugging-port=9333 --user-data-dir=.cdp/profile 
 
 ---
 
-## 14. 自动更新
+## 14. 自动更新（可选，默认关闭）
 
+开源版**不带头部的 `@updateURL` / `@downloadURL`** —— 不想让脚本偷偷连任何服务器，
+安装方式也改成纯手动导入（下载 `.user.js` → 拖进浏览器 / 油猴导入）。
+
+想开自动更新，两条路：
+
+**A. 自己托管**
+在文件头部加：
+```js
+// @updateURL    https://你的地址/xiaohongshu-fishy.user.js
+// @downloadURL  https://你的地址/xiaohongshu-fishy.user.js
 ```
-脚本头部 @updateURL → http://127.0.0.1:8125/xiaohongshu-fishy.user.js
+
+**B. 用仓库里的本地更新源**
+```
+@updateURL → http://127.0.0.1:8125/xiaohongshu-fishy.user.js
 serve.mjs 每次请求实时读文件里的 @version（改完即生效，不用重启）
 Tampermonkey 定期比对版本 → 自动拉新版
 ```

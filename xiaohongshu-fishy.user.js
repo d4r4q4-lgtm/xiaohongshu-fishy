@@ -3,8 +3,6 @@
 // @namespace    local.fishy.xhs
 // @version      0.1
 // @author       BOB
-// @updateURL    http://127.0.0.1:8125/xiaohongshu-fishy.user.js
-// @downloadURL  http://127.0.0.1:8125/xiaohongshu-fishy.user.js
 // @description  把小红书首页与笔记详情页伪装成在线表格（Excel 样式）：一帖一行、多行单元格、图片只留可点击的文字链接
 // @match        https://www.xiaohongshu.com/*
 // @run-at       document-start
