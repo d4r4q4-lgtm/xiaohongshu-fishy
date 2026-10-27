@@ -13,3 +13,6 @@ hits.log
 *.swp
 .DS_Store
 Thumbs.db
+
+# 本机推送脚本（含本地绝对路径，不入库）
+push.cmd

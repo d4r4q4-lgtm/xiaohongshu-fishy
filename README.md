@@ -50,10 +50,20 @@
 | Violentmonkey | ✅ 基本可用 |
 | 其他 | ⚠️ 未测试，自求多福 |
 
-### 2. 下载脚本文件
+### 2. 拿到脚本文件（两种）
 
-在仓库页面点 `xiaohongshu-fishy.user.js` → 右上角 **Download raw file**（或 `Raw` 后另存为）。
-文件名必须保持 `.user.js` 结尾。
+**方式 A：直接点链接安装**（最省事，油猴会自动拦截并弹安装页）
+
+```
+https://raw.githubusercontent.com/d4r4q4-lgtm/xiaohongshu-fishy/main/xiaohongshu-fishy.user.js
+```
+
+> raw 域名在部分网络环境下打不开。打不开就用方式 B。
+
+**方式 B：下载文件再导入**
+
+仓库页面点 `xiaohongshu-fishy.user.js` → 右上角 **Download raw file**（或 `Raw` 后另存为）。
+**文件名必须保持 `.user.js` 结尾**，否则油猴不认。
 
 ### 3. 导入油猴（任选一种）
 
