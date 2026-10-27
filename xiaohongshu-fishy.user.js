@@ -8,6 +8,9 @@
 // @homepageURL  https://github.com/d4r4q4-lgtm/xiaohongshu-fishy
 // @supportURL   https://github.com/d4r4q4-lgtm/xiaohongshu-fishy/issues
 // @match        https://www.xiaohongshu.com/*
+// @match        https://xiaohongshu.com/*
+// @match        https://www.rednote.com/*
+// @match        https://rednote.com/*
 // @run-at       document-start
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -19,7 +22,7 @@
   'use strict';
 
   var DEMO = !!window.__FISHY_DEMO__;
-  var HOST_OK = /(^|\.)xiaohongshu\.com$/.test(location.hostname);
+  var HOST_OK = /(^|\.)(xiaohongshu|rednote)\.com$/.test(location.hostname);
   if (!DEMO && !HOST_OK) return;
 
   console.info('%c[fishy] v0.1 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
@@ -245,7 +248,7 @@
     if (DEMO) return true;
     if (/sns-avatar|avatar/i.test(src)) return false;
     if (/emoji|smiley/i.test(img.className || '')) return false;
-    return /xhscdn\.com|sns-webpic|sns-img|ci\.xiaohongshu/i.test(src);
+    return /xhscdn\.com|sns-webpic|sns-img|ci\.xiaohongshu|rednote/i.test(src);
   }
 
   function findPanel(img) {
@@ -342,7 +345,7 @@
       if (r.width < 260 || r.height < 200) continue;
       var b = getComputedStyle(el).backgroundImage;
       var m = b && b.match(/url\(["']?(.*?)["']?\)/);
-      if (!m || !/xhscdn|sns-webpic|sns-img|ci\.xiaohongshu/.test(m[1])) continue;
+      if (!m || !/xhscdn|sns-webpic|sns-img|ci\.xiaohongshu|rednote/.test(m[1])) continue;
       el.dataset.fzBg = '1';
       var url = m[1].split('?')[0].split('!')[0];
       var link = document.createElement('a');
@@ -3153,7 +3156,7 @@
       e.stopPropagation();
       if (e.key === 'Enter') {
         var q = (inp.value || '').trim();
-        if (q) location.href = 'https://www.xiaohongshu.com/search_result?keyword=' +
+        if (q) location.href = location.origin + '/search_result?keyword=' +
           encodeURIComponent(q) + '&source=web_explore_feed';
         return;
       }
