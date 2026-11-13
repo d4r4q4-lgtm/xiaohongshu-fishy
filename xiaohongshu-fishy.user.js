@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小红书 · 表格模式（摸鱼）
 // @namespace    https://github.com/d4r4q4-lgtm/xiaohongshu-fishy
-// @version      1.21
+// @version      1.22
 // @author       haozi
 // @description  把小红书伪装成 Excel 在线表格：一帖一行，封面图变成「封面图」文字链接，点开才看原图
 // @license      MIT
@@ -38,7 +38,7 @@
   }
   if (!DEMO && !HOST_OK) return;
 
-  console.info('%c[fishy] v1.21 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
+  console.info('%c[fishy] v1.22 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
 
   // ---- 排障：脚本"没接管"时必须说得出为什么 ----
   // 用户看到的只有"还是原网页"，这句话没法排查。所以把"走到哪一步、为什么停、看到多少行"
@@ -52,7 +52,7 @@
   }
   function diagPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=1.21&p=' + encodeURIComponent(location.pathname) +
+      var u = 'http://127.0.0.1:8125/hit?v=1.22&p=' + encodeURIComponent(location.pathname) +
         '&stage=' + encodeURIComponent(DIAG.stage) + '&why=' + encodeURIComponent(DIAG.why) +
         '&rows=' + DIAG.rows + '&err=' + encodeURIComponent(String(DIAG.err).slice(0, 120));
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
@@ -92,7 +92,7 @@
   // 版本回执：只发到本机 127.0.0.1，用来确认实际在跑哪一版（排查"改了没生效"）
   (function fzPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=1.21&p=' + encodeURIComponent(location.pathname);
+      var u = 'http://127.0.0.1:8125/hit?v=1.22&p=' + encodeURIComponent(location.pathname);
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
       fetch(u, { mode: 'no-cors', cache: 'no-store' }).catch(function () {});
     } catch (e) {}
@@ -1786,6 +1786,44 @@
     return out;
   }
 
+  // ---------- 首页封面图取数（2026-11-13 加固）----------
+  // 真机实测（CDP 抓的真实 __INITIAL_STATE__，2026-11-13）：
+  //   首页 noteCard 的键是 [type, displayTitle, user, interactInfo, cover]，**没有 imageList**。
+  //   cover 是对象：{ urlPre, urlDefault, url:"", infoList:[{imageScene,url}...], width, height }，
+  //   其中 url 常是空串，真正有值的是 urlDefault / urlPre / infoList[0].url。
+  // （以前误以为图文笔记有 imageList，实际首页没有；那条回退只在少数接口形态下有用。）
+  // 除了 cover 对象，这里把「cover 直接是字符串 URL」「封面挂在 video 子对象」「图集第一张」
+  // 几种形态一起兜住 —— 站点结构改一版就换一批字段名，单认一条路早晚还会空。
+  function coverOf(nc) {
+    if (!nc || typeof nc !== 'object') return null;
+    function pickOne(v) {
+      if (!v) return null;
+      if (typeof v === 'string') {
+        var s = v.trim().replace(/^\/\//, 'https://');
+        return /^https?:\/\//.test(s) ? { src: s, w: 0, h: 0 } : null;
+      }
+      if (Array.isArray(v)) return normImgs(v)[0] || null;
+      if (typeof v === 'object') return normImgs([v])[0] || null;
+      return null;
+    }
+    // 1) noteCard.cover（最常见）
+    var c = pickOne(nc.cover);
+    if (c) return c;
+    // 2) 平级的几种别名
+    c = pickOne(nc.coverUrl || nc.cover_url || nc.coverImage || nc.cover_image);
+    if (c) return c;
+    // 3) 视频笔记：封面可能放在 video 子对象里（和 noteCard 同级）
+    var vd = nc.video || nc.videoCard || nc.video_card || null;
+    if (vd && typeof vd === 'object') {
+      c = pickOne(vd.cover || vd.coverUrl || vd.cover_url || vd.image || vd.firstFrame || vd.first_frame);
+      if (c) return c;
+    }
+    // 4) 图集第一张（少数形态下才有）
+    c = pickOne(nc.imageList || nc.image_list || nc.images || null);
+    if (c) return c;
+    return null;
+  }
+
   // 从任意节点上取图片数组 + 互动数 + 话题，键名两套都认
   function noteParts(node) {
     if (!node || typeof node !== 'object') return null;
@@ -2264,16 +2302,12 @@
         if (!id) continue;
         var nc = it.noteCard || it.note_card || {};
         var inf = nc.interactInfo || nc.interact_info || {};
-        // 封面图：视频笔记在 noteCard.cover，图文笔记经常只有 noteCard.imageList / image_list。
-        // 以前只认 cover，图文笔记的 cover 是空的 → 首页那一格退化成横杠「—」。
-        // 这里 cover 取不到就回退到图集第一张（normImgs 已统一解析 urlDefault/urlPre/infoList/masterUrl）。
-        var covObj = nc.cover || nc.coverUrl || nc.cover_url || null;
-        var coverImgs = covObj ? normImgs([covObj]) : [];
-        var listImgs = normImgs(nc.imageList || nc.image_list || []);
-        var firstImg = coverImgs[0] || listImgs[0] || null;
-        var u = firstImg ? firstImg.src : '';
-        var cw = firstImg ? (firstImg.w || 0) : 0;
-        var ch = firstImg ? (firstImg.h || 0) : 0;
+        // 封面图：真机首页 noteCard 只有 cover 对象（urlDefault/urlPre/infoList 里有值，url 常为空串），
+        // 没有 imageList。cover 的各种形态（对象/字符串/数组/视频封面/图集）都由 coverOf 统一兜住。
+        var cov = coverOf(nc);
+        var u = cov ? cov.src : '';
+        var cw = cov ? (cov.w || 0) : 0;
+        var ch = cov ? (cov.h || 0) : 0;
         var us = nc.user || nc.author || {};
         out.push({
           id: String(id),

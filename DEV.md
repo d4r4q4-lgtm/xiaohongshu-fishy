@@ -1,6 +1,6 @@
 # 开发文档
 
-> 面向要改这个脚本的人。作者 **haozi**，版本 `1.21`。  
+> 面向要改这个脚本的人。作者 **haozi**，版本 `1.22`。  
 > 只讲实现与坑，不赘述使用方式（那在 [README](README.md)）。
 
 ---
@@ -264,11 +264,16 @@ ensureMoreRow()   表格末尾一行：「加载更多」+ 状态（共 N 条 / 
 `collectCards()` 两遍：先扫 DOM 卡片，再把 `feed.feeds` 里还没进 DOM 的补上，最后按
 `feed.feeds` 的真实顺序 `orderRows()` 排一遍。
 
-**封面图取数（2026-11-12 修）**：`stateFeedItems()` 取封面时，`noteCard.cover` 只在视频笔记里可靠，
-**图文笔记的封面放在 `noteCard.imageList / image_list` 里**（cover 常为空）。以前只认 `cover`，
-导致图文笔记在"走 state 补数据"那一刻封面退化成横杠「—」，等 DOM 图片懒加载出来又变回链接，来回跳。
-现在 `cover` 取不到就回退到图集第一张，复用 `normImgs()` 统一解析（urlDefault/urlPre/infoList/masterUrl，
-并补 `https://` 前缀）。
+**封面图取数（2026-11-13 定稿，v1.22）**：CDP 抓真机 `__INITIAL_STATE__` 实测，首页 `noteCard` 的键是
+`[type, displayTitle, user, interactInfo, cover]`，**没有 `imageList`**（v1.21 误以为图文笔记有 imageList，
+那条回退只在极少数接口形态下有用）。`cover` 是对象：
+`{ urlPre, urlDefault, url:"", infoList:[{imageScene,url}], width, height }` —— **`url` 常是空串，
+真正有值的是 `urlDefault` / `urlPre` / `infoList[0].url`**。
+`coverOf(nc)` 统一兜住几种形态：cover 对象 / cover 直接是字符串 URL / 封面挂在 `video` 子对象 /
+图集第一张。站点换一版字段名时不用再改这条链路。
+**踩坑**：本地 `test.html` 的 `feed.feeds` mock 以前只有 id+token、从没造过 cover 数据，
+所以"首页封面变横杠"这类 bug 本地永远测不出来（本地全绿、真机全空）。v1.22 起 mock 复刻真机
+`noteCard.cover` 结构，并加 T7c 断言直接验 `stateFeedItems()` 每条都能拿出封面 URL。
 
 ### 6.4 顶部清理（`hideBeforeBoard`）
 
