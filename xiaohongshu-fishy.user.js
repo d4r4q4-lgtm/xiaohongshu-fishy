@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小红书 · 表格模式（摸鱼）
 // @namespace    https://github.com/d4r4q4-lgtm/xiaohongshu-fishy
-// @version      1.22
+// @version      1.23
 // @author       haozi
 // @description  把小红书伪装成 Excel 在线表格：一帖一行，封面图变成「封面图」文字链接，点开才看原图
 // @license      MIT
@@ -38,7 +38,7 @@
   }
   if (!DEMO && !HOST_OK) return;
 
-  console.info('%c[fishy] v1.22 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
+  console.info('%c[fishy] v1.23 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
 
   // ---- 排障：脚本"没接管"时必须说得出为什么 ----
   // 用户看到的只有"还是原网页"，这句话没法排查。所以把"走到哪一步、为什么停、看到多少行"
@@ -52,7 +52,7 @@
   }
   function diagPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=1.22&p=' + encodeURIComponent(location.pathname) +
+      var u = 'http://127.0.0.1:8125/hit?v=1.23&p=' + encodeURIComponent(location.pathname) +
         '&stage=' + encodeURIComponent(DIAG.stage) + '&why=' + encodeURIComponent(DIAG.why) +
         '&rows=' + DIAG.rows + '&err=' + encodeURIComponent(String(DIAG.err).slice(0, 120));
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
@@ -92,7 +92,7 @@
   // 版本回执：只发到本机 127.0.0.1，用来确认实际在跑哪一版（排查"改了没生效"）
   (function fzPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=1.22&p=' + encodeURIComponent(location.pathname);
+      var u = 'http://127.0.0.1:8125/hit?v=1.23&p=' + encodeURIComponent(location.pathname);
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
       fetch(u, { mode: 'no-cors', cache: 'no-store' }).catch(function () {});
     } catch (e) {}
@@ -2520,8 +2520,53 @@
       added++;
     }
 
+    // 3) 封面补漏（v1.23，2026-11-13 修"封面图大多数时候是横杠、偶尔有"）
+    //    上面两遍都带 `noteMap.has(id) → continue`：行只建一次，之后不再重读。
+    //    但页面刚打开那一瞬，卡片封面图往往还没懒加载完（img.src 还是空），readCard 拿到的
+    //    urls 就是空数组 —— 于是这一行被永久缓存成"没封面"，之后图片明明加载出来了也不再补，
+    //    「封面图」那格就一直是横杠「—」。图片恰好在采集前加载好时才有链接，所以"偶尔有"。
+    //    这里对「已存在但 urls 为空」的行补一次：先看 state，state 没有就重读 DOM 卡片
+    //    （此刻图片通常已经加载好了）。补上就把那一行重画。
+    for (s = 0; s < items.length; s++) {
+      var pi = items[s];
+      if (!pi || !pi.urls || !pi.urls.length) continue;
+      var pd = noteMap.get(pi.id);
+      if (pd && (!pd.urls || !pd.urls.length)) {
+        pd.urls = pi.urls;
+        pd.dims = pi.dims;
+        patchRowCover(pd, pi.id);
+      }
+    }
+    noteMap.forEach(function (pd2, pid2) {
+      if (pd2.urls && pd2.urls.length) return;
+      var a2 = document.querySelector('a[href*="/explore/' + pid2 + '"]');
+      if (!a2) return;
+      var d2 = null;
+      try { d2 = readCard(cardOf(a2)); } catch (e3) { d2 = null; }
+      if (d2 && d2.urls && d2.urls.length) {
+        pd2.urls = d2.urls;
+        pd2.dims = d2.dims;
+        patchRowCover(pd2, pid2);
+      }
+    });
     if (items.length) { try { orderRows(items); } catch (e2) {} }
     return added;
+  }
+
+  // 把某一行的封面格重画（补漏时用）。行找不到、或里面本来就没数据就跳过。
+  function patchRowCover(d, id) {
+    var row = document.querySelector('.fz-brow[data-fz-id="' + id + '"]');
+    if (!row) return false;
+    var numEl = row.querySelector('.fz-num');
+    var idx = parseInt(numEl ? numEl.textContent : '1', 10) || 1;
+    row.__fzData = d;          // 和 appendBoardRow 一致：重画后要让行拿着最新数据
+    stampRow(row, d);          // 类型/赞数/作者/时间这些筛选用元信息也顺手刷一遍
+    row.innerHTML = '<div class="fz-cells">' + cellsHtml(d, idx) + '</div>';
+    markKeyboard(row);
+    bindLinks(row.firstChild, d);
+    cellTips(row);
+    bindRowOpen(row.firstChild, row, d);
+    return true;
   }
 
   // 空白行铺在自有看板末尾
@@ -9231,6 +9276,20 @@
       bindHeaderFallback();
       bindColDrag();
       sync();
+      // 首屏封面预热（v1.23）：首页卡片的封面图是**懒加载**的，页面刚打开那一瞬 img.src
+      // 往往还是空的；而 watch() 的 MutationObserver 只盯 childList、不盯 attributes，
+      // 图片 src 后填好的那一刻**不触发 sync**（用户不滚动、DOM 不动就永远不重采）。
+      // 结果：首次建行时封面为空 → 永久缓存成「—」，只有翻页/滚动才偶尔重采上。
+      // 这里前 12 秒每隔 1.2s 主动补一轮（collectCards 里第 3 段补漏会重画空封面行），
+      // 图片一加载出来就能补上；之后停掉，不再空转。
+      (function coverWarmup() {
+        var n = 0;
+        var t = setInterval(function () {
+          n++;
+          try { collectCards(true); } catch (eCW) {}
+          if (n >= 10) clearInterval(t);     // 10 轮 × 1.2s = 12s
+        }, 1200);
+      })();
     } catch (e) {
       diagSet('error', 'boot-throw', { err: (e && e.message) ? e.message : String(e) });
       console.error('[fishy] 初始化失败（' + diagLine() + '）：', e);

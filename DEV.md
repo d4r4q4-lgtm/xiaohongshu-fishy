@@ -1,6 +1,6 @@
 # 开发文档
 
-> 面向要改这个脚本的人。作者 **haozi**，版本 `1.22`。  
+> 面向要改这个脚本的人。作者 **haozi**，版本 `1.23`。  
 > 只讲实现与坑，不赘述使用方式（那在 [README](README.md)）。
 
 ---
@@ -274,6 +274,18 @@ ensureMoreRow()   表格末尾一行：「加载更多」+ 状态（共 N 条 / 
 **踩坑**：本地 `test.html` 的 `feed.feeds` mock 以前只有 id+token、从没造过 cover 数据，
 所以"首页封面变横杠"这类 bug 本地永远测不出来（本地全绿、真机全空）。v1.22 起 mock 复刻真机
 `noteCard.cover` 结构，并加 T7c 断言直接验 `stateFeedItems()` 每条都能拿出封面 URL。
+
+**v1.23 时序竞态修复（"大多数时候是横杠、偶尔才有"）**：真正让封面长期为空的不是字段名，是**时序**。
+链路：页面一打开脚本就采集 → 此时卡片封面图还没懒加载完（img.src 为空）→ `readCard()` 拿到 `urls: []`
+→ 行被 `noteMap.set(id, d)` **永久缓存**成"没封面"。而 `collectCards()` 两处都有
+`if (noteMap.has(id)) continue`，行只建一次、之后永不重读；`watch()` 的 MutationObserver 只盯
+`childList`、不盯 `attributes`，**图片 src 后填的那一刻不触发 sync**（用户不滚动就永远不重采）。
+两个原因叠加 → 封面几乎永远补不回来，只有图片恰好在采集前就绪（快网/缓存）时"偶尔有"。
+修法两处：
+1. `collectCards()` 第 3 段「封面补漏」：对已存在但 `urls` 为空的行，先看 state、再看 DOM 重读，
+   补上就 `patchRowCover()` 重画那一行（不再受 `noteMap.has` 的"一次性"限制）。
+2. `boot()` 里起「首屏封面预热」：前 12 秒每 1.2s 主动 `collectCards(true)` 一轮，图片一加载出来
+   就补上；之后停掉不空转。
 
 ### 6.4 顶部清理（`hideBeforeBoard`）
 
