@@ -7,6 +7,13 @@ shots/
 *.mp4
 hits.log
 plan*.json
+dump-*.txt
+gm-stub.js
+gmplan*.txt
+real-out.txt
+test-empty.html
+test-off.html
+tmp-*.json
 
 # ===== 开发工具（仅作者本地使用，不随仓库发布）=====
 cdp-lib.mjs
@@ -14,6 +21,9 @@ cdp.mjs
 check.mjs
 real-check.mjs
 sweep.mjs
+live-edge.mjs
+live-attach.mjs
+live-keep.mjs
 test.html
 test-scroll.html
 serve.mjs
