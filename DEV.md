@@ -1,6 +1,6 @@
 # 开发文档
 
-> 面向要改这个脚本的人。作者 **haozi**，版本 `1.23`。  
+> 面向要改这个脚本的人。作者 **haozi**，版本 `1.24`。  
 > 只讲实现与坑，不赘述使用方式（那在 [README](README.md)）。
 
 ---
@@ -4026,6 +4026,67 @@ fz-viewer | vis=visible
 全量 **432 pass / 0 fail**（本地 339 + 真机 75 + 巡检 18）。
 
 
+## 70. 详情页正文话题可点：点 `#话题` 去搜这个（v1.24）
+
+### 要解决的问题
+
+详情页主贴和评论的正文里，`#话题` 一直只是普通文字（`escT()` 整段转义）。想顺着一个话题
+看看别人的帖子，只能自己复制话题名、再去顶部搜索框粘贴回车，很别扭。
+
+### 做法
+
+`topicHtml(s)`（`escT` 旁边）把纯文本切成「普通文字 + 话题」两段：普通文字照常 `esc()`，
+话题那一段生成一个和「封面图」同款的 `.fz-link`：
+
+```
+<a class="fz-link fz-topic" data-topic="巨石强森" title="搜「巨石强森」">#巨石强森</a>
+```
+
+- **文案保留原名**（`#` 也留着），不把 `#` 吃掉、不改写话题名；
+- 只有话题是链接，其余仍是纯文本，字体/颜色/下划线底边全部沿用 `.fz-link`（`#0563c1` + 手型），
+  和「封面图」「展开全文」长得一模一样；
+- **话题名不能含空白**（空格是话题之间的分隔符），中文标点也要排除 ——
+  否则「`#话题，后面的话`」会把逗号后面一起吞进话题名。长度上限 40 防误吞长串。
+
+### 跳转：和搜索框走同一条路
+
+新增 `searchTopic(kw)`，顶部搜索框回车**也改成调它**，两处共用同一个 URL 模板：
+
+```js
+location.href = location.origin + '/search_result?keyword=' +
+  encodeURIComponent(kw) + '&source=web_explore_feed';
+```
+
+这样"点话题"和"搜索框输话题名回车"在代码层面就是同一条路，以后改了一边不会漏掉另一边。
+（真机实测跳转结果：`/search_result?keyword=成绩&source=web_explore_feed`，和搜索框一致。）
+
+### 只有详情页做，列表页不做
+
+`cellsHtml()` 里用 `kind === 'main'` 判断：详情页主贴、详情页评论（`isCmt`）都走 `topicHtml`，
+**瀑布流列表页的正文保持纯文本**。理由：列表页没有话题的点击入口（那里点击是进详情页），
+做成链接会"看着能点、点了没反应"。评论行只出现在详情页，所以直接走 `topicHtml` 安全。
+
+### 「展开全文」要跟着改
+
+原来展开是把 `es.textContent = fl.dataset.full`（纯文本塞回去），一展开话题链接就没了。
+改成 `es.innerHTML = topicHtml(fl.dataset.full || '')`，展开后话题照样可点。
+`dataset.full` 读出来是浏览器解码后的纯文本，可以直接过 `topicHtml`。
+
+### 点击处理
+
+挂在详情表那条统一的 click 委托里（`.fz-full` 分支后面加 `.fz-topic` 分支），
+`e.preventDefault() + e.stopPropagation()` 后调 `searchTopic(tp.dataset.topic)`。
+
+### 断言（本地 T-topic / T-topicb / T-topicc）
+
+- `T-topic`：`#巨石强森 #减重` → 两个 `.fz-topic` 链接、文案保留 `#`、`data-topic` 正确、其余文字还在；
+- `T-topicb`：`看这个#硬汉，真的很猛` → 只认「硬汉」，逗号后面留在正文里；
+- `T-topicc`：正文里的 `<img onerror=...>` 仍被转义成 `&lt;img`，不会因为加链接就漏 XSS。
+
+真机另测：详情页 `.fz-topic` 全部是 `<a class="fz-link">`、颜色 `rgb(5,99,193)` + `cursor:pointer`；
+点一下确实跳到 `/search_result?keyword=<话题名>&source=web_explore_feed`。
+
+
 ## 附录 A · 功能索引
 
 一张表回答"这个功能在哪儿实现、讲在哪一节"。功能名按用户看到的样子写，
@@ -4101,6 +4162,7 @@ fz-viewer | vis=visible
 | 标题栏「评论 80/265」那个已展示数 / 表尾「已展示 80 条（评论 10 + 回复 7 + 未展开 63）」 | `cmtCounts()`、`cmtCountsOf()`、`cmtFolded()`、`cmtLoadedText()`、`updateNsStat()` | §53.4、§56 |
 | 看图能 `←` `→` 翻同篇的图 | `viewerGo()`、`.fz-v-nav` | §18 |
 | 长正文截 300 字 + 「展开全文」；导出给全文 | `longBody()`、`cellsHtml()`、`buildCsv()` | §25 |
+| 详情页正文里的 `#话题` 可点，点了去搜这个话题（和顶部搜索框回车同一条路） | `topicHtml()`、`searchTopic()`、`.fz-topic` | §70 |
 | 导出 CSV（BOM、只导看得见的行、详情去掉「操作」列） | `exportCsv()`、`buildCsv()`、`csvOf()` | §15 |
 | 时间列（首页从笔记 id 的 ObjectId 前 8 位还原） | `noteIdTime()`、`noteIdMs()`、`shortTime()` | §6.5 |
 | 顺着表往下读（‹ 上一篇 / 下一篇 ›，Alt+↑↓） | `saveQueue()`、`queueNav()`、`queueHref()` | §28 |

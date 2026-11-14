@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小红书 · 表格模式（摸鱼）
 // @namespace    https://github.com/d4r4q4-lgtm/xiaohongshu-fishy
-// @version      1.23
+// @version      1.24
 // @author       haozi
 // @description  把小红书伪装成 Excel 在线表格：一帖一行，封面图变成「封面图」文字链接，点开才看原图
 // @license      MIT
@@ -38,7 +38,7 @@
   }
   if (!DEMO && !HOST_OK) return;
 
-  console.info('%c[fishy] v1.23 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
+  console.info('%c[fishy] v1.24 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
 
   // ---- 排障：脚本"没接管"时必须说得出为什么 ----
   // 用户看到的只有"还是原网页"，这句话没法排查。所以把"走到哪一步、为什么停、看到多少行"
@@ -52,7 +52,7 @@
   }
   function diagPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=1.23&p=' + encodeURIComponent(location.pathname) +
+      var u = 'http://127.0.0.1:8125/hit?v=1.24&p=' + encodeURIComponent(location.pathname) +
         '&stage=' + encodeURIComponent(DIAG.stage) + '&why=' + encodeURIComponent(DIAG.why) +
         '&rows=' + DIAG.rows + '&err=' + encodeURIComponent(String(DIAG.err).slice(0, 120));
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
@@ -92,7 +92,7 @@
   // 版本回执：只发到本机 127.0.0.1，用来确认实际在跑哪一版（排查"改了没生效"）
   (function fzPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=1.23&p=' + encodeURIComponent(location.pathname);
+      var u = 'http://127.0.0.1:8125/hit?v=1.24&p=' + encodeURIComponent(location.pathname);
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
       fetch(u, { mode: 'no-cors', cache: 'no-store' }).catch(function () {});
     } catch (e) {}
@@ -270,6 +270,42 @@
     return t.replace(EMOJI_RE, '').replace(/[ \t]{2,}/g, ' ').replace(/^\s+|\s+$/g, '');
   }
   function escT(s) { return esc(stripEmoji(s)); }
+
+  // 正文里的「#话题」变成可点击链接（v1.24，2026-11-14）
+  // 需求：详情页正文里的话题点一下就跳到该话题的搜索结果，效果和在右上角搜索框
+  // 输入话题名回车**完全一致**（同一个 URL）。文案保留话题原名（# 也留着），
+  // 只有话题本身是链接，其余仍是纯文本，字体/颜色沿用 .fz-link（和「封面图」同款）。
+  // 话题名不能含空白（空格是话题之间的分隔符）；中文标点也要排除，否则
+  // 「#话题，后面的话」会把逗号后面一起吞进话题名。长度上限 40 防误吞长串。
+  function topicHtml(s) {
+    var t = stripEmoji(s);
+    if (!t) return '';
+    if (t.indexOf('#') < 0) return esc(t);
+    // 每次调用新建字面量：带 g 的正则复用会残留 lastIndex
+    var re = /#[^\s#，。、；：！？（）《》【】“”‘’…,.;:!?()\[\]<>"'&]{1,40}/g;
+    var out = '', last = 0, m;
+    while ((m = re.exec(t)) !== null) {
+      if (m.index > last) out += esc(t.slice(last, m.index));
+      var name = m[0].slice(1);                    // 去掉开头的 #
+      out += '<a class="fz-link fz-topic" data-topic="' + esc(name) +
+        '" title="搜「' + esc(name) + '」">#' + esc(name) + '</a>';
+      last = m.index + m[0].length;
+    }
+    if (last < t.length) out += esc(t.slice(last));
+    return out;
+  }
+
+  // 跳站内搜索：和顶部搜索框回车走**同一条路**（同一个 URL、同样当前页跳转），
+  // 两处都调这一个函数，免得以后改了一边忘了另一边。
+  // 只 trim，不擅自改词：搜索框输什么就搜什么（话题链接传进来的已经是不带 # 的名字）。
+  function searchTopic(kw) {
+    kw = String(kw == null ? '' : kw).trim();
+    if (!kw) return false;
+    location.href = location.origin + '/search_result?keyword=' +
+      encodeURIComponent(kw) + '&source=web_explore_feed';
+    return true;
+  }
+
   function pad(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
   function txt(el, max) {
     var s = (el && el.textContent || '').replace(/\s+/g, ' ').trim();
@@ -1357,7 +1393,7 @@
     // 由 cmtRowsHtml() 挂到这一楼最后一条回复的后面。
     var body = isCmt
       ? '<span class="fz-es">' + (data.depth ? '<i class="fz-reply">↳</i> ' : '') +
-        (replyTo ? '<b class="fz-at">' + esc(replyTo) + '</b>' : '') + escT(data.desc || '') + '</span>' +
+        (replyTo ? '<b class="fz-at">' + esc(replyTo) + '</b>' : '') + topicHtml(data.desc || '') + '</span>' +
         ((data.urls && data.urls.length) ? '<span class="fz-el fz-el-inline">' + imgLinks(data, false) + '</span>' : '')
       : titleHtml +
         (data.desc
@@ -1365,7 +1401,11 @@
               // 折叠只管「太长」；设置里关掉折叠就整段铺出来（导出/复制一直是全文）
               var full = stripEmoji(data.desc);
               var cut = !!(CFG.foldText && full.length > 300);
-              return '<span class="fz-es">' + esc(cut ? full.slice(0, 300) + '…' : full) + '</span>' +
+              var shown = cut ? full.slice(0, 300) + '…' : full;
+              // 话题链接只在**详情页主贴**做（kind === 'main'）；列表页正文保持纯文本——
+              // 那里没有话题的点击入口，做成链接反而会"看着能点、点了没反应"。
+              var shownHtml = (kind === 'main') ? topicHtml(shown) : esc(shown);
+              return '<span class="fz-es">' + shownHtml + '</span>' +
                 (cut ? '<span class="fz-el"><a class="fz-link fz-full" data-full="' + esc(full) + '">展开全文（' +
                   full.length + ' 字）</a></span>' : '');
             })()
@@ -3281,8 +3321,19 @@
         e.preventDefault(); e.stopPropagation();
         var cell = fl.closest('.fz-e');
         var es = cell && cell.querySelector('.fz-es');
-        if (es) es.textContent = fl.dataset.full || '';
+        // 展开后也用 topicHtml（而不是 textContent）：不然一展开，正文里的话题链接就没了。
+        // dataset.full 读出来的是浏览器解码后的纯文本，可以直接过 topicHtml。
+        if (es) es.innerHTML = topicHtml(fl.dataset.full || '');
         if (fl.parentNode) fl.parentNode.removeChild(fl);
+        return;
+      }
+
+      // 话题链接（v1.24）：跳该话题的站内搜索结果，和顶部搜索框回车同一条路
+      var tp = t.closest('.fz-topic');
+      if (tp) {
+        e.preventDefault(); e.stopPropagation();
+        searchTopic(tp.getAttribute('data-topic') || '');
+        return;
       }
     });
 
@@ -8016,9 +8067,7 @@
     inp.addEventListener('keydown', function (e) {
       e.stopPropagation();
       if (e.key === 'Enter') {
-        var q = (inp.value || '').trim();
-        if (q) location.href = location.origin + '/search_result?keyword=' +
-          encodeURIComponent(q) + '&source=web_explore_feed';
+        searchTopic(inp.value || '');
         return;
       }
     });
@@ -8876,6 +8925,7 @@
         pooledSubs: pooledSubs,
         cmtRowsHtml: cmtRowsHtml,
         cellsHtml: cellsHtml,
+        topicHtml: topicHtml,        // 话题转链接（自测用）
         stateFeedItems: stateFeedItems,
         collectCards: collectCards,
         loadMore: loadMore,
