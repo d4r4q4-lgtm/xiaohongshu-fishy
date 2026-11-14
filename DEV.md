@@ -1,6 +1,6 @@
 # 开发文档
 
-> 面向要改这个脚本的人。作者 **haozi**，版本 `1.25`。  
+> 面向要改这个脚本的人。作者 **haozi**，版本 `1.26`。  
 > 只讲实现与坑，不赘述使用方式（那在 [README](README.md)）。
 
 ---
@@ -4113,6 +4113,69 @@ location.href = location.origin + '/search_result?keyword=' +
 （放宽的代价是把正文里的普通 `#` 也变成链接）。
 
 
+## 71. 设置面板按用户清单重排（v1.26）
+
+### 需求来源
+
+用户给的 `设置页面修改.xlsx`（三列：原文 / 修改为 / 放在哪）。**只改界面，功能行为不变。**
+
+表格下半部分还有一份分组草稿（7+7），和改前代码里的 `SET_DEFS` **逐项、逐序完全一致** ——
+那是"现状抄写"，不是新要求。**以主表的「放在哪」列为准。**
+
+### 结构变化
+
+| 改前 | 改后 |
+|---|---|
+| 主分组：显示优化 7 项 + 功能增强 7 项 | 显示优化 **13 项** + 功能增强 **2 项** |
+| 「高级设置」折叠区：总开关 / 登录伪装 / 文件名 | **整个取消**；总开关与文件名并入「显示优化」，登录伪装删除 |
+| 「图片变成文字链接」开关 | **删除**，恒为开 |
+| 16 个开关 | 14 个开关（`docTitle` 是输入框，不算开关） |
+
+具体去向：
+
+- **显示优化（13）**：tableMode, detailSheet, userTable, foldText, linkPlainTitle,
+  linkPlainImg, tips, hideAvatar, hideEmoji, opMark, floorTint, showFloor, docTitle(输入框)
+- **功能增强（2）**：busy, hush
+- **删除（恒为开）**：imgLink、login
+
+文案全部按 Excel 的「修改为」列替换，例如
+`首页表格模式（总开关）` → `列表页以表格形式展示`、
+`详情页有回复的楼层用浅绿底` → `高亮有回复的楼层`、
+`详情页显示「N楼」` → `显示楼层`。
+
+### 实现要点
+
+1. **`SET_DEFS` 支持控件类型**：每项第三位可选 `'input'`，`setRow(key, text, type)` 据此渲染
+   「文字 + 输入框」（目前只有 docTitle）。不传仍是 checkbox。
+2. **删掉的两个选项不能只从面板拿掉**：老用户本地存过 `imgLink: false` / `login: false`，
+   面板上没这个选项了、行为却还是关的 —— 这种"看不见的开关"最难查。
+   所以配置加载处直接写死 `CFG.login = true; CFG.imgLink = true;`，**不再 `store.get`**。
+   （CFG 字段和 `store` 里的旧值都保留，随时能改回来。）
+3. **「高级设置」整块删除**：`settingsHtml()` 去掉 `.fz-set-adv` 段，
+   `onSettingsClick()` 去掉 `[data-fz-set-adv]` 分支。相关 CSS 留着（无元素匹配，不生效）。
+4. **开关计数**：菜单里「X 个开关」原来数 `SET_DEFS` 总长再 `+= 2`（加高级设置那两个）。
+   现在遍历两组、跳过 `type === 'input'`，得 14。
+
+### ⚠️ 顺手修掉的一个长期缺陷：`FZ_VER`
+
+设置面板标题和 `head.dataset.fzVer` 读的是 `var FZ_VER`，它**从 v1.2 起就没再更新过**
+（一直写死 `'1.2'`）。也就是说前面十几版升版都没同步这一处，面板标题显示的一直是 v1.2。
+v1.26 一并改成 `'1.26'`。
+
+**升版本现在要同步 7 处**（原来是 5 处，加上面板标题 / FZ_VER）：
+`@version`、`console.info`、两处 ping、README 顶部、DEV.md 顶部、**`FZ_VER`**。
+
+### 断言变动
+
+- `T74`：开关数 16 → **14**，标题文案跟着改。
+- `T75`：原「高级设置默认收着、点开才露出」→ 改为
+  **「高级设置折叠区已取消，总开关/文件名并入主分组，登录伪装与图片链接两项已删」**。
+- `T77`：原「关掉图片变链接 → 变 N 张图」→ 选项已删，改为
+  **「面板里没有该项、`CFG.imgLink` 恒 true、列表行始终是图片链接」**。
+
+本地 **345 pass / 0 fail**。真机截图核对：13+2 项、文案逐条对上、无高级设置区、面板标题 v1.26。
+
+
 ## 附录 A · 功能索引
 
 一张表回答"这个功能在哪儿实现、讲在哪一节"。功能名按用户看到的样子写，
@@ -4202,7 +4265,7 @@ location.href = location.origin + '/search_result?keyword=' +
 | 回复：让位 + 聚焦原生输入框 | `siteAction('reply')` | §9.5 |
 | 让位期间的「返回表格模式」按钮（屏幕正中；Esc / Ctrl+Shift+X 也行） | `showBackBtn()`、`hideBackBtn()`、`backToTable()`、`typingInBox()`、`.fz-back` | §50、§55 |
 | 脚本点不动时的红框 / 压暗（聚光灯：框里亮、框外黑） | `highlightEl()`、`frameEl()`、`dimSite()`、`actOn()`、`tryPress()` | §54.3、§50 |
-| 设置面板（8 个开关 + 高级设置 + 保存/恢复默认/导出） | `openSettings()`、`saveSettings()`、`SET_DEFS`、`setRow()`、`.fz-set` | §57 |
+| 设置面板（14 个开关 + 1 个文件名输入框，两组：显示优化 / 功能增强） | `openSettings()`、`saveSettings()`、`SET_DEFS`、`setRow()`、`.fz-set` | §57、§71 |
 | 脚本点不动时的红框 / 压暗（聚光灯：框里亮、框外黑） | `highlightEl()`、`frameEl()`、`dimSite()`、`actOn()`、`tryPress()` | §54.3、§50 |
 
 ### A.7 排障（出问题时先看这里）

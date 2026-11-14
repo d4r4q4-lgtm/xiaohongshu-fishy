@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小红书 · 表格模式（摸鱼）
 // @namespace    https://github.com/d4r4q4-lgtm/xiaohongshu-fishy
-// @version      1.25
+// @version      1.26
 // @author       haozi
 // @description  把小红书伪装成 Excel 在线表格：一帖一行，封面图变成「封面图」文字链接，点开才看原图
 // @license      MIT
@@ -38,7 +38,7 @@
   }
   if (!DEMO && !HOST_OK) return;
 
-  console.info('%c[fishy] v1.25 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
+  console.info('%c[fishy] v1.26 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
 
   // ---- 排障：脚本"没接管"时必须说得出为什么 ----
   // 用户看到的只有"还是原网页"，这句话没法排查。所以把"走到哪一步、为什么停、看到多少行"
@@ -52,7 +52,7 @@
   }
   function diagPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=1.25&p=' + encodeURIComponent(location.pathname) +
+      var u = 'http://127.0.0.1:8125/hit?v=1.26&p=' + encodeURIComponent(location.pathname) +
         '&stage=' + encodeURIComponent(DIAG.stage) + '&why=' + encodeURIComponent(DIAG.why) +
         '&rows=' + DIAG.rows + '&err=' + encodeURIComponent(String(DIAG.err).slice(0, 120));
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
@@ -92,7 +92,7 @@
   // 版本回执：只发到本机 127.0.0.1，用来确认实际在跑哪一版（排查"改了没生效"）
   (function fzPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=1.25&p=' + encodeURIComponent(location.pathname);
+      var u = 'http://127.0.0.1:8125/hit?v=1.26&p=' + encodeURIComponent(location.pathname);
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
       fetch(u, { mode: 'no-cors', cache: 'no-store' }).catch(function () {});
     } catch (e) {}
@@ -178,7 +178,7 @@
   } catch (e) {}
 
   // ---------- 可调参数 ----------
-  var FZ_VER = '1.2';
+  var FZ_VER = '1.26';    // 面板标题 / head 上的版本回执都读它（升版本时别漏了这一处）
   var CFG = {
     tableMode: true,       // 首页信息流重排成表格
     detailSheet: true,     // 笔记详情页也渲染成同一张表
@@ -230,8 +230,11 @@
   CFG.tableMode = store.get('tableMode', CFG.tableMode);
   CFG.detailSheet = store.get('detailSheet', CFG.detailSheet);
   CFG.docTitle = store.get('docTitle', CFG.docTitle);
-  CFG.login = store.get('login', true);
-  ['foldText', 'imgLink', 'tips', 'busy', 'hush', 'hideAvatar', 'hideEmoji',
+  // v1.26：这两个开关已从设置面板删掉，恒为开。
+  // 不再读存储 —— 老用户本地存过 false 的也一并忽略，否则会出现"面板上没有这个选项、行为却是关的"。
+  CFG.login = true;      // 标题栏「已登录」伪装，恒显示
+  CFG.imgLink = true;    // 图片一律列成蓝色文字链接
+  ['foldText', 'tips', 'busy', 'hush', 'hideAvatar', 'hideEmoji',
     'linkPlainTitle', 'linkPlainImg', 'opMark', 'floorTint', 'showFloor', 'userTable']
     .forEach(function (k) {
       // 默认值取 CFG 里写的那一份：默认关的开关（hideEmoji / linkPlain / userTable）
@@ -6751,11 +6754,15 @@
     return item('docTitle', false, '换个文件名', CFG.docTitle) +
       item('export', false, '导出 CSV', '') +
       item('settings', false, '设置…', (function () {
-        // 数字从 SET_DEFS 里数出来（写死会像以前那样停在「8 个开关」不动），
-        // 再加上「高级设置」里那两个（总开关 / 登录伪装）—— 面板里能勾的一共就这么多
+        // 数字从 SET_DEFS 里数出来（写死会像以前那样停在某个数字不动）。
+        // v1.26：高级设置折叠区取消、两个选项删除，所以只数两组里的 checkbox；
+        // 文件名那行是输入框（type='input'），不算"开关"。
         var n = 0;
-        for (var i = 0; i < SET_DEFS.length; i++) n += SET_DEFS[i][1].length;
-        n += 2;
+        for (var i = 0; i < SET_DEFS.length; i++) {
+          for (var j = 0; j < SET_DEFS[i][1].length; j++) {
+            if (SET_DEFS[i][1][j][2] !== 'input') n++;
+          }
+        }
         return n + ' 个开关';
       })()) +
       '<div class="fz-msep"></div>' +
@@ -6936,30 +6943,41 @@
   // 为什么要它：以前这些功能写死在代码里，想关一个得去改脚本；菜单里也只有 4 个入口。
   var setEl = null;
 
+  // 设置面板的开关清单（v1.26，2026-11-14 按用户《设置页面修改》重排）
+  // 两组：显示优化 / 功能增强。原「高级设置」折叠区已取消 —— 里面的
+  // 总开关（tableMode）和文件名（docTitle）并入「显示优化」，
+  // 「标题栏显示已登录伪装」（login）和「图片变成文字链接」（imgLink）两个选项删掉，恒为开。
+  // 第三项是控件类型：缺省 checkbox，'input' = 文本输入框（目前只有 docTitle）。
   var SET_DEFS = [
     ['显示优化', [
-      ['foldText', '折叠过长正文（超过 300 字）'],
-      ['imgLink', '图片变成文字链接（点开看原图）'],
-      ['linkPlainTitle', '标题不标蓝（当普通文字，照样能点）'],
-      ['linkPlainImg', '封面图 / 图2 / 视频不标蓝'],
+      ['tableMode', '列表页以表格形式展示'],
+      ['detailSheet', '详情页以表格形式展示'],
+      ['userTable', '用户页以表格形式展示'],
+      ['foldText', '超过 300 字折叠'],
+      ['linkPlainTitle', '标题不标蓝（不影响点击访问详情页）'],
+      ['linkPlainImg', '图片、视频按钮不标蓝（不影响点击查看图片、视频）'],
       ['tips', '单元格悬停显示全文'],
-      ['hideAvatar', '隐藏用户头像（关掉就画回来：楼主 / 楼层 / 回复）'],
-      ['hideEmoji', '隐藏表情符号（😀🍩 这类，会改文字）']
+      ['hideAvatar', '隐藏用户头像'],
+      ['hideEmoji', '隐藏表情符号（😀🍩 等）'],
+      ['opMark', '详情页标记楼主'],
+      ['floorTint', '高亮有回复的楼层'],
+      ['showFloor', '显示楼层'],
+      ['docTitle', '在浏览器内显示的标签名称', 'input']
     ]],
     ['功能增强', [
-      ['detailSheet', '详情页接管（点笔记在表格里看）'],
-      ['busy', '加载时的进度卡片'],
-      ['hush', '视频默认静音'],
-      ['opMark', '详情页标出楼主（作者列加「楼主」）'],
-      ['floorTint', '详情页有回复的楼层用浅绿底'],
-      ['showFloor', '详情页显示「N楼」'],
-      ['userTable', '点用户名用表格看（关掉 = 开原生用户页）']
+      ['busy', '加载时显示提示'],
+      ['hush', '视频播放时默认静音']
     ]]
   ];
 
   // 复选框自己画：站点的 reset 会把原生 checkbox 的外观整个抹掉（实测整排看不见勾），
   // 所以 input 只留语义和 .checked，样子交给后面的 <i>
-  function setRow(key, text) {
+  // type === 'input' 时画成「文字 + 输入框」那一行（文件名）。
+  function setRow(key, text, type) {
+    if (type === 'input') {
+      return '<label class="fz-set-row fz-set-inline"><span class="fz-set-tx">' + esc(text) + '</span>' +
+        '<input class="fz-set-inp" data-fz-cfg="' + key + '" value="' + esc(CFG[key] || '') + '"></label>';
+    }
     return '<label class="fz-set-row"><input type="checkbox" data-fz-cfg="' + key + '"' +
       (CFG[key] ? ' checked' : '') + '><i class="fz-set-cb"></i>' +
       '<span class="fz-set-tx">' + esc(text) + '</span></label>';
@@ -6968,22 +6986,13 @@
   function settingsHtml() {
     var cols = SET_DEFS.map(function (g) {
       return '<div class="fz-set-col"><h4>' + esc(g[0]) + '</h4>' +
-        g[1].map(function (r) { return setRow(r[0], r[1]); }).join('') + '</div>';
+        g[1].map(function (r) { return setRow(r[0], r[1], r[2]); }).join('') + '</div>';
     }).join('');
     return '<div class="fz-set-mask" data-fz-set-mask="1"></div>' +
       '<div class="fz-set" role="dialog" aria-modal="true" aria-label="设置">' +
         '<div class="fz-set-hd"><div class="fz-set-tt">小红书 · 表格模式 <i>v' + FZ_VER + '</i></div>' +
           '<button class="fz-set-x" data-fz-set-close="1" aria-label="关闭">✕</button></div>' +
         '<div class="fz-set-bd">' + cols + '</div>' +
-        '<div class="fz-set-adv">' +
-          '<button class="fz-set-advb" data-fz-set-adv="1"><i>+</i><span>高级设置</span></button>' +
-          '<div class="fz-set-advbox">' +
-            setRow('tableMode', '首页表格模式（总开关）') +
-            setRow('login', '标题栏显示「已登录」伪装') +
-            '<label class="fz-set-row fz-set-inline"><span class="fz-set-tx">文件名</span>' +
-              '<input class="fz-set-inp" data-fz-cfg="docTitle" value="' + esc(CFG.docTitle) + '"></label>' +
-          '</div>' +
-        '</div>' +
         '<div class="fz-set-ft">' +
           '<button data-fz-set-def="1">恢复默认</button>' +
           '<button data-fz-set-out="1">导出设置</button>' +
@@ -7017,16 +7026,6 @@
     var t = e.target;
     if (!t || !t.closest || !setEl) return;
     if (t.closest('[data-fz-set-mask],[data-fz-set-close]')) { closeSettings(); return; }
-    if (t.closest('[data-fz-set-adv]')) {
-      var box = setEl.querySelector('.fz-set-advbox');
-      var wasOn = box.classList.contains('on');
-      box.classList.toggle('on', !wasOn);
-      var b = t.closest('[data-fz-set-adv]');
-      b.classList.toggle('on', !wasOn);
-      var i = b.querySelector('i');
-      if (i) i.textContent = wasOn ? '+' : '−';
-      return;
-    }
     if (t.closest('[data-fz-set-save]')) { saveSettings(); return; }
     if (t.closest('[data-fz-set-def]')) { resetSettingsForm(); return; }
     if (t.closest('[data-fz-set-out]')) { exportSettings(); return; }
@@ -7104,7 +7103,7 @@
     var v = readSetForm();
     var reRender = false;
     // 改了"影响单元格内容"的开关：表格要重画一次
-    ['foldText', 'imgLink', 'tips', 'hideEmoji', 'linkPlainTitle', 'linkPlainImg',
+    ['foldText', 'tips', 'hideEmoji', 'linkPlainTitle', 'linkPlainImg',
       'hideAvatar', 'opMark', 'floorTint', 'showFloor', 'userTable'].forEach(function (k) {
       if ((k in v) && !!v[k] !== !!CFG[k]) reRender = true;
     });
@@ -7112,7 +7111,7 @@
     if (('tableMode' in v) && !!v.tableMode !== !!CFG.tableMode) applyTableMode(v.tableMode);
     if (('detailSheet' in v) && !!v.detailSheet !== !!CFG.detailSheet) applyDetailSheet(v.detailSheet);
     if (('docTitle' in v) && v.docTitle && v.docTitle !== CFG.docTitle) setDocTitle(v.docTitle);
-    ['foldText', 'imgLink', 'tips', 'busy', 'hush', 'login', 'hideAvatar', 'hideEmoji',
+    ['foldText', 'tips', 'busy', 'hush', 'hideAvatar', 'hideEmoji',
       'linkPlainTitle', 'linkPlainImg', 'opMark', 'floorTint', 'showFloor', 'userTable']
       .forEach(function (k) {
         if (!(k in v)) return;
@@ -7130,10 +7129,10 @@
   // 恢复默认：只改面板上的勾（点保存才真的写进去），免得"点一下全变了"
   function resetSettingsForm() {
     if (!setEl) return;
-    var D = { foldText: true, imgLink: true, tips: true, detailSheet: true, busy: true, hush: true,
+    var D = { foldText: true, tips: true, detailSheet: true, busy: true, hush: true,
       hideAvatar: true, hideEmoji: false, linkPlainTitle: false, linkPlainImg: false,
       opMark: true, floorTint: true,
-      showFloor: true, userTable: false, tableMode: true, login: true };
+      showFloor: true, userTable: false, tableMode: true };
     Array.prototype.forEach.call(setEl.querySelectorAll('[data-fz-cfg]'), function (inp) {
       var k = inp.getAttribute('data-fz-cfg');
       if (k === 'docTitle') { inp.value = '工作簿1'; return; }
