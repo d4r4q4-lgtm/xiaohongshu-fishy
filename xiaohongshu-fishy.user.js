@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小红书 · 表格模式（摸鱼）
 // @namespace    https://github.com/d4r4q4-lgtm/xiaohongshu-fishy
-// @version      1.24
+// @version      1.25
 // @author       haozi
 // @description  把小红书伪装成 Excel 在线表格：一帖一行，封面图变成「封面图」文字链接，点开才看原图
 // @license      MIT
@@ -38,7 +38,7 @@
   }
   if (!DEMO && !HOST_OK) return;
 
-  console.info('%c[fishy] v1.24 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
+  console.info('%c[fishy] v1.25 已注入 · ' + location.host + location.pathname, 'color:#217346;font-weight:600');
 
   // ---- 排障：脚本"没接管"时必须说得出为什么 ----
   // 用户看到的只有"还是原网页"，这句话没法排查。所以把"走到哪一步、为什么停、看到多少行"
@@ -52,7 +52,7 @@
   }
   function diagPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=1.24&p=' + encodeURIComponent(location.pathname) +
+      var u = 'http://127.0.0.1:8125/hit?v=1.25&p=' + encodeURIComponent(location.pathname) +
         '&stage=' + encodeURIComponent(DIAG.stage) + '&why=' + encodeURIComponent(DIAG.why) +
         '&rows=' + DIAG.rows + '&err=' + encodeURIComponent(String(DIAG.err).slice(0, 120));
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
@@ -92,7 +92,7 @@
   // 版本回执：只发到本机 127.0.0.1，用来确认实际在跑哪一版（排查"改了没生效"）
   (function fzPing() {
     try {
-      var u = 'http://127.0.0.1:8125/hit?v=1.24&p=' + encodeURIComponent(location.pathname);
+      var u = 'http://127.0.0.1:8125/hit?v=1.25&p=' + encodeURIComponent(location.pathname);
       if (navigator.sendBeacon) { navigator.sendBeacon(u); return; }
       fetch(u, { mode: 'no-cors', cache: 'no-store' }).catch(function () {});
     } catch (e) {}
@@ -287,7 +287,8 @@
     while ((m = re.exec(t)) !== null) {
       if (m.index > last) out += esc(t.slice(last, m.index));
       var name = m[0].slice(1);                    // 去掉开头的 #
-      out += '<a class="fz-link fz-topic" data-topic="' + esc(name) +
+      // role="link"：<a> 没有 href，浏览器/读屏不会当它是链接，显式标一下语义
+      out += '<a class="fz-link fz-topic" role="link" data-topic="' + esc(name) +
         '" title="搜「' + esc(name) + '」">#' + esc(name) + '</a>';
       last = m.index + m[0].length;
     }
@@ -3370,7 +3371,7 @@
               if (dirty) {
                 var mr0 = el.querySelector('.fz-nrow');
                 var cl0 = mr0 && mr0.querySelector('.fz-cells');
-                if (cl0) cl0.innerHTML = cellsHtml(data, 1, 'main');
+                if (cl0) { cl0.innerHTML = cellsHtml(data, 1, 'main'); markKeyboard(cl0); }
               }
             }
           } catch (e5) {}
@@ -3616,6 +3617,7 @@
     var cl = mr && mr.querySelector('.fz-cells');
     if (cl) {
       cl.innerHTML = cellsHtml(data, 1, 'main');
+      markKeyboard(cl);          // 重画后补 tabindex：否则里面的链接（图/话题/展开）键盘 Tab 不到
       mr.__fz = data;
     }
     updateNsStat(el, data);
@@ -8926,6 +8928,7 @@
         cmtRowsHtml: cmtRowsHtml,
         cellsHtml: cellsHtml,
         topicHtml: topicHtml,        // 话题转链接（自测用）
+        markKeyboard: markKeyboard,  // 键盘可达补丁（自测用：验"重画后能补回 tabindex"）
         stateFeedItems: stateFeedItems,
         collectCards: collectCards,
         loadMore: loadMore,
